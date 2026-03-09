@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NASty Savings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:            #0c0c0c;
+      --surface:       #111111;
+      --surface-2:     #171717;
+      --surface-3:     #202020;
+      --border:        #1e1e1e;
+      --border-strong: #2a2a2a;
+      --text:          #d4d4d4;
+      --text-dim:      #505050;
+      --text-muted:    #2c2c2c;
+      --accent:        #4d9fff;
+      --accent-soft:   rgba(77,159,255,0.10);
+      --accent-text:   #4d9fff;
+      --positive:      #22c55e;
+      --positive-bg:   rgba(34,197,94,0.07);
+      --positive-text: #4ade80;
+      --negative:      #ef4444;
+      --negative-bg:   rgba(239,68,68,0.07);
+      --negative-text: #f87171;
+      --warning:       #f59e0b;
+      /* compat aliases used by chart SVG */
+      --surface-solid:  #111111;
+      --border-strong:  #2a2a2a;
+      --radius:    6px;
+      --radius-sm: 3px;
+      --radius-lg: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Header ── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0 16px; border-bottom: 1px solid var(--border);
+    }
+    .header-brand { display: flex; align-items: baseline; gap: 10px; }
+    .app-title { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+    .app-sub { font-size: 0.7rem; color: var(--text-dim); }
+
+    /* ── Currency ── */
+    .currency-selector { display: flex; gap: 1px; }
+    .cur-btn {
+      background: transparent; border: 1px solid transparent;
+      border-radius: var(--radius-sm); color: var(--text-dim);
+      cursor: pointer; font-size: 0.68rem; font-family: inherit;
+      font-weight: 500; padding: 3px 7px;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .cur-btn:hover { color: var(--text); background: var(--surface-2); }
+    .cur-btn.active { color: var(--text); background: var(--surface-2); border-color: var(--border-strong); }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex; align-items: stretch;
+      padding: 16px 0 14px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10; background: var(--bg);
+    }
+    .stat-item { flex: 1; padding-right: 20px; min-width: 85px; }
+    .stat-item + .stat-item { padding-left: 20px; border-left: 1px solid var(--border); }
+    .stat-label {
+      font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-dim); margin-bottom: 5px; white-space: nowrap;
+    }
+    .stat-value {
+      font-size: 1.35rem; font-weight: 600; letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums; transition: color .25s; line-height: 1;
+    }
+    .stat-value.positive { color: var(--positive-text); }
+    .stat-value.negative { color: var(--negative-text); }
+    .stat-value.neutral  { color: var(--text); }
+    .stat-sub { font-size: 0.66rem; color: var(--text-dim); margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .stat-action { display: flex; align-items: flex-end; padding-left: 20px; border-left: 1px solid var(--border); flex-shrink: 0; }
+    .share-btn {
+      background: transparent; border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm); color: var(--text-dim);
+      cursor: pointer; font-size: 0.68rem; font-family: inherit;
+      font-weight: 500; padding: 5px 10px; white-space: nowrap;
+      transition: color .12s, border-color .12s, background .12s;
+    }
+    .share-btn:hover { color: var(--text); background: var(--surface-2); }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0 12px;
+    }
+    .section-title {
+      font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.09em;
+      color: var(--text-dim); font-weight: 500;
+    }
+    .presets-row { display: flex; align-items: center; gap: 2px; }
+    .preset-btn {
+      background: transparent; border: 1px solid transparent;
+      border-radius: var(--radius-sm); color: var(--text-dim);
+      cursor: pointer; font-size: 0.68rem; font-family: inherit;
+      font-weight: 500; padding: 3px 8px;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .preset-btn:hover { color: var(--text); background: var(--surface-2); }
+    .preset-btn.active { color: var(--text); background: var(--surface-2); border-color: var(--border-strong); }
+
+    /* ── List panel (services) ── */
+    .list-panel {
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      overflow: hidden; margin-bottom: 28px;
+    }
+
+    /* ── Service row ── */
+    .service-card {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 9px 14px;
+      border-bottom: 1px solid var(--border); background: transparent;
+      transition: background .1s;
+    }
+    .service-card:hover { background: var(--surface); }
+
+    .card-info { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
+    .emoji {
+      font-size: 0.95rem; width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .emoji.clickable {
+      cursor: pointer; border: none; padding: 0; font-family: inherit;
+      background: transparent; border-radius: var(--radius-sm);
+      transition: background .1s;
+    }
+    .emoji.clickable:hover { background: var(--surface-2); }
+
+    .name-desc { min-width: 0; }
+    .name { font-size: 0.82rem; font-weight: 500; line-height: 1.25; }
+    .desc { font-size: 0.67rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .card-controls { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .cost-row { display: flex; align-items: center; gap: 5px; transition: opacity .2s; }
+    .service-card:not(.active) .cost-row { opacity: 0.48; }
+    .cost-cloud-label {
+      font-size: 0.63rem; color: var(--text-dim);
+      max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .cost-suffix { font-size: 0.63rem; color: var(--text-dim); }
+
+    /* ── Toggle ── */
+    .toggle { position: relative; width: 34px; height: 19px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle .slider {
+      position: absolute; inset: 0; background: var(--surface-3);
+      border: 1px solid var(--border-strong); border-radius: 19px; cursor: pointer;
+      transition: background .18s, border-color .18s;
+    }
+    .toggle .slider::before {
+      content: ''; position: absolute; width: 13px; height: 13px;
+      left: 2px; top: 2px; background: var(--text-dim); border-radius: 50%;
+      transition: transform .18s, background .18s;
+    }
+    .toggle input:checked + .slider { background: var(--positive); border-color: var(--positive); }
+    .toggle input:checked + .slider::before { transform: translateX(15px); background: #0c0c0c; }
+    .toggle input:focus-visible + .slider { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Inputs ── */
+    input[type="number"], input[type="text"], input[type="month"] {
+      background: var(--surface-2); border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm); color: var(--text); padding: 5px 7px;
+      font-size: 0.8rem; font-variant-numeric: tabular-nums;
+      width: 100%; transition: border-color .12s, background .12s;
+      -moz-appearance: textfield; font-family: inherit;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input:focus { outline: none; border-color: var(--accent); background: var(--surface-3); }
+    input::placeholder { color: var(--text-muted); }
+
+    .input-group { display: flex; align-items: center; gap: 3px; }
+    .input-group .prefix { font-size: 0.75rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+    /* ── Custom card ── */
+    .custom-card .name-input {
+      background: transparent; border: 1px solid transparent;
+      border-radius: var(--radius-sm); color: var(--text);
+      padding: 2px 4px; font-size: 0.82rem; font-weight: 500;
+      width: 116px; font-family: inherit;
+    }
+    .custom-card .name-input:hover { border-color: var(--border-strong); background: var(--surface-2); }
+    .custom-card .name-input:focus { outline: none; border-color: var(--accent); background: var(--surface-2); }
+
+    .remove-btn {
+      background: none; border: none; color: var(--text-dim);
+      cursor: pointer; font-size: 1rem; padding: 1px 4px;
+      border-radius: var(--radius-sm); line-height: 1;
+      transition: color .12s, background .12s;
+    }
+    .remove-btn:hover { color: var(--negative-text); background: var(--negative-bg); }
+
+    /* ── Add custom ── */
+    .add-custom {
+      background: transparent; border: none; border-bottom: 1px solid var(--border);
+      padding: 9px 14px; width: 100%;
+      display: flex; align-items: center; gap: 7px;
+      color: var(--text-dim); cursor: pointer;
+      font-size: 0.73rem; font-family: inherit; text-align: left;
+      transition: color .12s, background .12s;
+    }
+    .add-custom:hover { color: var(--text); background: var(--surface); }
+
+    /* ── selfh.st ── */
+    .selfhost-link {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; color: var(--text-dim);
+      text-decoration: none; font-size: 0.73rem;
+      transition: color .12s, background .12s;
+    }
+    .selfhost-link:hover { color: var(--text); background: var(--surface); }
+    .selfhost-domain { font-weight: 500; color: var(--accent); }
+
+    /* ── Costs panel ── */
+    .costs-panel {
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      overflow: hidden; margin-top: 0; margin-bottom: 28px;
+    }
+    .costs-row { display: flex; border-bottom: 1px solid var(--border); }
+    .costs-row:last-child { border-bottom: none; }
+    .cost-field {
+      flex: 1; display: flex; flex-direction: column; gap: 5px;
+      padding: 11px 14px; border-right: 1px solid var(--border);
+    }
+    .cost-field:last-child { border-right: none; }
+    .cost-field label {
+      font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-dim); font-weight: 500;
+    }
+    .cost-field .hint { font-size: 0.62rem; color: var(--text-muted); margin-top: 1px; }
+    .cost-result-val {
+      font-size: 0.82rem; color: var(--positive-text);
+      font-variant-numeric: tabular-nums; font-weight: 500; padding: 3px 0;
+    }
+    .cost-result-val.empty { color: var(--text-dim); }
+
+    /* ── Chart ── */
+    .chart-panel {
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      overflow: hidden; padding: 14px 10px 8px; margin-bottom: 28px;
+    }
+    .chart-panel svg { display: block; }
+
+    /* ── Emoji picker ── */
+    .emoji-popover {
+      background: var(--surface-2); border: 1px solid var(--border-strong);
+      border-radius: var(--radius); padding: 8px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.65); width: 196px;
+    }
+    .emoji-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 6px; }
+    .emoji-opt {
+      background: none; border: none; border-radius: var(--radius-sm);
+      cursor: pointer; font-size: 1.1rem; padding: 4px; line-height: 1;
+      transition: background .1s;
+    }
+    .emoji-opt:hover { background: var(--surface-3); }
+    .emoji-custom-input {
+      width: 100%; font-size: 0.75rem; padding: 5px 8px;
+      border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+      background: var(--surface-3); color: var(--text); font-family: inherit;
+    }
+    .emoji-custom-input:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: var(--surface-3); border: 1px solid var(--border-strong);
+      color: var(--text); padding: 7px 16px; border-radius: 20px;
+      font-size: 0.74rem; opacity: 0; transition: opacity .2s, transform .2s;
+      pointer-events: none; z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 24px 0 32px;
+      color: var(--text-dim); font-size: 0.68rem;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--text-dim); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .stat-value { font-size: 1.1rem; }
+      .stat-item { min-width: 72px; }
+      .cost-cloud-label { display: none; }
+      .header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .costs-row { flex-wrap: wrap; }
+      .cost-field { min-width: calc(50% - 1px); }
+    }
+    @media (max-width: 380px) {
+      .cost-field { min-width: 100%; border-right: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <header class="header">
+    <div class="header-brand">
+      <h1 class="app-title">NASty Savings</h1>
+      <span class="app-sub">Self-hosting vs cloud</span>
+    </div>
+    <div class="currency-selector" id="currency-selector"></div>
+  </header>
+
+  <div class="stats-bar" id="results">
+    <div class="stat-item">
+      <div class="stat-label">Cloud Cost</div>
+      <div class="stat-value neutral" id="r-cloud">—</div>
+      <div class="stat-sub">per month</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Hosting Cost</div>
+      <div class="stat-value" id="r-self" style="color:var(--warning)">—</div>
+      <div class="stat-sub">per month</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Monthly Savings</div>
+      <div class="stat-value positive" id="r-savings">—</div>
+      <div class="stat-sub" id="r-yearly"></div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Break-even</div>
+      <div class="stat-value neutral" id="r-breakeven">—</div>
+      <div class="stat-sub" id="r-breakeven-sub">hardware payoff</div>
+    </div>
+    <div class="stat-item" id="r-total-item" style="display:none">
+      <div class="stat-label">Total Saved</div>
+      <div class="stat-value positive" id="r-total">—</div>
+      <div class="stat-sub" id="r-total-sub">since you started</div>
+    </div>
+    <div class="stat-action">
+      <button class="share-btn" id="share-btn">Share ↗</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <span class="section-title">Services</span>
+    <div class="presets-row">
+      <button class="preset-btn" data-preset="starter">Starter</button>
+      <button class="preset-btn" data-preset="media">Media</button>
+      <button class="preset-btn" data-preset="full">Full Stack</button>
+      <button class="preset-btn" data-preset="clear">Clear</button>
+    </div>
+  </div>
+
+  <div class="list-panel">
+    <div id="services-grid"></div>
+    <a class="selfhost-link" href="https://selfh.st" target="_blank" rel="noopener">
+      <span style="opacity:.45">↗</span>
+      <span>Discover more self-hostable apps at</span>
+      <span class="selfhost-domain">selfh.st</span>
+    </a>
+  </div>
+
+  <div class="toolbar">
+    <span class="section-title">Hosting Costs</span>
+  </div>
+
+  <div class="costs-panel">
+    <div class="costs-row">
+      <div class="cost-field">
+        <label for="hw-cost">Hardware</label>
+        <div class="input-group">
+          <span class="prefix csym">$</span>
+          <input type="number" id="hw-cost" min="0" step="1" placeholder="500">
+        </div>
+      </div>
+      <div class="cost-field">
+        <label for="hw-life">Lifespan</label>
+        <input type="number" id="hw-life" min="1" max="20" step="1" placeholder="5 yrs">
+      </div>
+      <div class="cost-field">
+        <label for="internet">Internet / mo</label>
+        <div class="input-group">
+          <span class="prefix csym">$</span>
+          <input type="number" id="internet" min="0" step="1" placeholder="0">
+        </div>
+        <span class="hint">share attributed to hosting</span>
+      </div>
+    </div>
+    <div class="costs-row">
+      <div class="cost-field">
+        <label for="elec-watts">Watts</label>
+        <input type="number" id="elec-watts" min="0" step="1" placeholder="60">
+      </div>
+      <div class="cost-field">
+        <label for="elec-hours">Hours / day</label>
+        <input type="number" id="elec-hours" min="0" max="24" step="1" placeholder="24">
+      </div>
+      <div class="cost-field">
+        <label for="elec-rate"><span class="csym">$</span> / kWh</label>
+        <input type="number" id="elec-rate" min="0" step="0.01" placeholder="0.12">
+      </div>
+    </div>
+    <div class="costs-row">
+      <div class="cost-field">
+        <label>Electricity est.</label>
+        <div id="elec-result" class="cost-result-val empty">—</div>
+      </div>
+      <div class="cost-field">
+        <label for="domain">Domain / yr</label>
+        <div class="input-group">
+          <span class="prefix csym">$</span>
+          <input type="number" id="domain" min="0" step="1" placeholder="12">
+        </div>
+      </div>
+      <div class="cost-field">
+        <label for="other">Other / mo</label>
+        <div class="input-group">
+          <span class="prefix csym">$</span>
+          <input type="number" id="other" min="0" step="1" placeholder="0">
+        </div>
+      </div>
+    </div>
+    <div class="costs-row">
+      <div class="cost-field" style="border-right:none; flex-direction:row; align-items:center; gap:14px; flex-wrap:wrap;">
+        <label for="start-date" style="white-space:nowrap; flex-shrink:0">Self-hosting since</label>
+        <input type="month" id="start-date" style="max-width:160px; flex-shrink:0;">
+      </div>
+    </div>
+  </div>
+
+  <div id="chart-section" style="display:none">
+    <div class="toolbar">
+      <span class="section-title">Break-even Timeline</span>
+    </div>
+    <div class="chart-panel">
+      <svg id="breakeven-chart" viewBox="0 0 600 200" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="container">
+    NASty Savings &mdash; <a href="https://github.com/shaynelarocque/nastysavings" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Constants ────────────────────────────────────────────────────────────
+
+  const CURRENCIES = {
+    USD: { symbol: '$',   label: 'USD' },
+    EUR: { symbol: '€',   label: 'EUR' },
+    GBP: { symbol: '£',   label: 'GBP' },
+    CAD: { symbol: 'CA$', label: 'CAD' },
+    AUD: { symbol: 'A$',  label: 'AUD' },
+  };
+
+  const DEFAULT_SERVICES = [
+    { id: 'media',        emoji: '🎬', name: 'Media Server',     desc: 'Jellyfin + *arr stack',      cloudName: 'Netflix + purchases',          cost: 25    },
+    { id: 'music',        emoji: '🎵', name: 'Music Streaming',  desc: 'Navidrome / Jellyfin',        cloudName: 'Spotify / Apple Music',        cost: 11    },
+    { id: 'passwords',    emoji: '🔐', name: 'Password Manager', desc: 'Vaultwarden',                 cloudName: 'Bitwarden Premium',            cost: 0.83  },
+    { id: 'storage',      emoji: '💾', name: 'Cloud Storage',    desc: 'NAS / file sync',             cloudName: 'Google One / iCloud+ 2TB',    cost: 10    },
+    { id: 'adblock',      emoji: '🛡️', name: 'Ad Blocking',     desc: 'AdGuard Home',                cloudName: 'NextDNS Pro',                  cost: 1.67  },
+    { id: 'sponsorblock', emoji: '📺', name: 'SponsorBlock TV',  desc: 'iSponsorBlockTV',             cloudName: 'YouTube Premium',              cost: 14    },
+    { id: 'gaming',       emoji: '🎮', name: 'Game Servers',     desc: 'Minecraft, Valheim, etc.',    cloudName: 'Nitrado / hosted servers',     cost: 15    },
+    { id: 'photos',       emoji: '📸', name: 'Photo Hosting',    desc: 'Immich / PhotoPrism',         cloudName: 'Google Photos / iCloud',       cost: 3     },
+    { id: 'webhost',      emoji: '🌐', name: 'Web Hosting',      desc: 'Nginx / Caddy',               cloudName: 'Netlify Pro / shared hosting', cost: 10    },
+    { id: 'vpn',          emoji: '🔒', name: 'VPN',              desc: 'WireGuard / Tailscale',       cloudName: 'Commercial VPN',               cost: 10    },
+  ];
+
+  const PRESETS = {
+    starter: ['passwords', 'storage', 'adblock'],
+    media:   ['media', 'music', 'sponsorblock', 'photos'],
+    full:    DEFAULT_SERVICES.map(s => s.id),
+    clear:   [],
+  };
+
+  const EMOJI_OPTS = ['⚙️','🖥️','📡','🗄️','🔧','🌍','🎯','🎵','🎬','🔑','🛠️','📦','🤖','📊','🗂️','⚡','🧩','🔗','💬','🧱','🎲','🏠','🔓','💿','📱'];
+
+  // ── State ────────────────────────────────────────────────────────────────
+
+  function defaultState() {
+    return {
+      services: {},
+      hosting: { hwCost: '', hwLife: '', elecWatts: '', elecHours: '', elecRate: '', internet: '', domain: '', other: '', startDate: '' },
+      customServices: [],
+      currency: 'USD',
+    };
+  }
+
+  function normalizeState(s) {
+    const d = defaultState();
+    if (!s.currency) s.currency = d.currency;
+    if (!s.hosting) s.hosting = d.hosting;
+    if (!s.hosting.startDate) s.hosting.startDate = '';
+    if (!s.customServices) s.customServices = [];
+    if (!s.services) s.services = {};
+    s.customServices.forEach(cs => { if (!cs.emoji) cs.emoji = '⚙️'; });
+    return s;
+  }
+
+  function loadFromURL() {
+    try {
+      const raw = new URLSearchParams(window.location.search).get('s');
+      if (!raw) return null;
+      const binStr = atob(raw);
+      const bytes = Uint8Array.from(binStr, c => c.codePointAt(0));
+      return normalizeState(JSON.parse(new TextDecoder().decode(bytes)));
+    } catch { return null; }
+  }
+
+  let state = (() => {
+    const fromURL = loadFromURL();
+    if (fromURL) return fromURL;
+    try {
+      const saved = localStorage.getItem('nastySavings');
+      if (saved) return normalizeState(JSON.parse(saved));
+    } catch {}
+    return defaultState();
+  })();
+
+  function saveState() {
+    localStorage.setItem('nastySavings', JSON.stringify(state));
+  }
+
+  function getServiceState(id) {
+    if (!state.services[id]) state.services[id] = { enabled: false, cost: null };
+    return state.services[id];
+  }
+
+  // ── Currency ─────────────────────────────────────────────────────────────
+
+  function currSym() {
+    return (CURRENCIES[state.currency || 'USD'] || CURRENCIES.USD).symbol;
+  }
+  function fmt(n)  { return currSym() + Math.abs(n).toFixed(2); }
+  function fmtS(n) { return (n >= 0 ? '+' : '−') + fmt(n); }
+  function updateSymbols() {
+    document.querySelectorAll('.csym').forEach(el => el.textContent = currSym());
+  }
+
+  function renderCurrencySelector() {
+    const el = document.getElementById('currency-selector');
+    el.innerHTML = '';
+    Object.keys(CURRENCIES).forEach(code => {
+      const btn = document.createElement('button');
+      btn.className = 'cur-btn' + (state.currency === code ? ' active' : '');
+      btn.textContent = CURRENCIES[code].symbol + ' ' + code;
+      btn.addEventListener('click', () => {
+        state.currency = code;
+        saveState();
+        renderCurrencySelector();
+        updateSymbols();
+        recalc();
+        renderServices();
+      });
+      el.appendChild(btn);
+    });
+  }
+
+  // ── Presets ───────────────────────────────────────────────────────────────
+
+  function applyPreset(name) {
+    const ids = PRESETS[name] || [];
+    DEFAULT_SERVICES.forEach(svc => { getServiceState(svc.id).enabled = ids.includes(svc.id); });
+    saveState();
+    renderServices();
+    recalc();
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.preset === name && name !== 'clear');
+    });
+  }
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+  });
+
+  // ── Services ──────────────────────────────────────────────────────────────
+
+  function renderServices() {
+    const grid = document.getElementById('services-grid');
+    grid.innerHTML = '';
+    DEFAULT_SERVICES.forEach(svc => grid.appendChild(createCard(svc, getServiceState(svc.id), false)));
+    state.customServices.forEach((cs, idx) => {
+      grid.appendChild(createCard({
+        id: 'custom-' + idx, emoji: cs.emoji || '⚙️',
+        name: cs.name || 'Custom Service', desc: '', cloudName: 'vs cloud',
+        cost: cs.cost || 0, customIndex: idx,
+      }, getServiceState('custom-' + idx), true));
+    });
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-custom';
+    addBtn.innerHTML = '<span style="opacity:.5;font-size:1rem;line-height:1">+</span> Add custom service';
+    addBtn.addEventListener('click', () => {
+      state.customServices.push({ name: '', cost: 0, emoji: '⚙️' });
+      const idx = state.customServices.length - 1;
+      state.services['custom-' + idx] = { enabled: true, cost: null };
+      saveState(); renderServices(); recalc();
+    });
+    grid.appendChild(addBtn);
+  }
+
+  function createCard(svc, s, isCustom) {
+    const card = document.createElement('div');
+    card.className = 'service-card' + (s.enabled ? ' active' : '') + (isCustom ? ' custom-card' : '');
+    const defaultCost = s.cost !== null ? s.cost : svc.cost;
+    const emojiHTML = isCustom
+      ? `<button class="emoji clickable" title="Change emoji">${svc.emoji}</button>`
+      : `<span class="emoji">${svc.emoji}</span>`;
+
+    card.innerHTML = `
+      <div class="card-info">
+        ${emojiHTML}
+        <div class="name-desc">
+          ${isCustom
+            ? `<input type="text" class="name-input" value="${escHtml(svc.name === 'Custom Service' ? '' : svc.name)}" placeholder="Service name" data-field="name">`
+            : `<div class="name">${svc.name}</div>`}
+          ${svc.desc ? `<div class="desc">${svc.desc}</div>` : ''}
+        </div>
+      </div>
+      <div class="card-controls">
+        <div class="cost-row">
+          <span class="cost-cloud-label">${isCustom ? 'vs cloud' : svc.cloudName}</span>
+          <div class="input-group" style="width:84px">
+            <span class="prefix csym">${currSym()}</span>
+            <input type="number" min="0" step="0.01" value="${defaultCost}" data-field="cost" placeholder="0">
+          </div>
+          <span class="cost-suffix">/mo</span>
+        </div>
+        ${isCustom ? `<button class="remove-btn" title="Remove">&times;</button>` : ''}
+        <label class="toggle">
+          <input type="checkbox" ${s.enabled ? 'checked' : ''}>
+          <span class="slider"></span>
+        </label>
+      </div>`;
+
+    card.querySelector('input[type="checkbox"]').addEventListener('change', e => {
+      getServiceState(svc.id).enabled = e.target.checked;
+      card.classList.toggle('active', e.target.checked);
+      saveState(); recalc();
+    });
+
+    card.querySelector('input[data-field="cost"]').addEventListener('input', e => {
+      const val = parseFloat(e.target.value);
+      getServiceState(svc.id).cost = isNaN(val) ? null : val;
+      if (isCustom) state.customServices[svc.customIndex].cost = isNaN(val) ? 0 : val;
+      saveState(); recalc();
+    });
+
+    if (isCustom) {
+      card.querySelector('.emoji.clickable').addEventListener('click', e => {
+        e.stopPropagation();
+        openEmojiPicker(e.currentTarget, svc.customIndex);
+      });
+
+      const nameInput = card.querySelector('input[data-field="name"]');
+      if (nameInput) nameInput.addEventListener('input', e => {
+        state.customServices[svc.customIndex].name = e.target.value;
+        saveState();
+      });
+
+      card.querySelector('.remove-btn').addEventListener('click', () => {
+        state.customServices.splice(svc.customIndex, 1);
+        delete state.services[svc.id];
+        const old = { ...state.services };
+        state.customServices.forEach((_, i) => {
+          const ok = 'custom-' + (i >= svc.customIndex ? i + 1 : i);
+          const nk = 'custom-' + i;
+          if (ok !== nk && old[ok]) { state.services[nk] = old[ok]; delete state.services[ok]; }
+        });
+        saveState(); renderServices(); recalc();
+      });
+    }
+    return card;
+  }
+
+  function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  // ── Emoji picker ──────────────────────────────────────────────────────────
+
+  let emojiPopover = null;
+
+  function openEmojiPicker(triggerEl, customIdx) {
+    closeEmojiPicker();
+    const pop = document.createElement('div');
+    pop.className = 'emoji-popover';
+    pop.addEventListener('click', e => e.stopPropagation());
+
+    const grid = document.createElement('div');
+    grid.className = 'emoji-grid';
+    EMOJI_OPTS.forEach(e => {
+      const btn = document.createElement('button');
+      btn.className = 'emoji-opt'; btn.textContent = e;
+      btn.addEventListener('click', () => { setCustomEmoji(customIdx, e, triggerEl); closeEmojiPicker(); });
+      grid.appendChild(btn);
+    });
+
+    const inp = document.createElement('input');
+    inp.className = 'emoji-custom-input'; inp.type = 'text'; inp.placeholder = 'Or type any emoji…';
+    inp.addEventListener('input', () => {
+      const match = [...inp.value].find(c => c.codePointAt(0) > 127);
+      if (match) { setCustomEmoji(customIdx, match, triggerEl); closeEmojiPicker(); }
+    });
+
+    pop.appendChild(grid); pop.appendChild(inp);
+    document.body.appendChild(pop);
+    emojiPopover = pop;
+
+    const rect = triggerEl.getBoundingClientRect();
+    pop.style.cssText = `position:fixed;top:${rect.bottom + 6}px;left:${rect.left}px;z-index:1000`;
+    requestAnimationFrame(() => {
+      if (rect.left + pop.offsetWidth > window.innerWidth - 8)
+        pop.style.left = Math.max(8, window.innerWidth - pop.offsetWidth - 8) + 'px';
+    });
+  }
+
+  function setCustomEmoji(idx, emoji, triggerEl) {
+    state.customServices[idx].emoji = emoji;
+    triggerEl.textContent = emoji;
+    saveState();
+  }
+
+  function closeEmojiPicker() { if (emojiPopover) { emojiPopover.remove(); emojiPopover = null; } }
+  document.addEventListener('click', closeEmojiPicker);
+
+  // ── Hosting inputs ────────────────────────────────────────────────────────
+
+  const hostingInputs = {
+    hwCost: document.getElementById('hw-cost'), hwLife: document.getElementById('hw-life'),
+    elecWatts: document.getElementById('elec-watts'), elecHours: document.getElementById('elec-hours'),
+    elecRate: document.getElementById('elec-rate'), internet: document.getElementById('internet'),
+    domain: document.getElementById('domain'), other: document.getElementById('other'),
+    startDate: document.getElementById('start-date'),
+  };
+
+  function loadHostingInputs() {
+    const h = state.hosting;
+    Object.keys(hostingInputs).forEach(k => {
+      if (h[k] !== '' && h[k] !== undefined) hostingInputs[k].value = h[k];
+    });
+  }
+
+  Object.keys(hostingInputs).forEach(k => {
+    hostingInputs[k].addEventListener('input', () => {
+      state.hosting[k] = hostingInputs[k].value;
+      saveState(); recalc();
+    });
+  });
+
+  // ── Share ─────────────────────────────────────────────────────────────────
+
+  function shareConfig() {
+    const json  = JSON.stringify(state);
+    const bytes = new TextEncoder().encode(json);
+    const bin   = Array.from(bytes, b => String.fromCodePoint(b)).join('');
+    const enc   = btoa(bin);
+    const url   = location.origin + location.pathname + '?s=' + enc;
+    navigator.clipboard.writeText(url)
+      .then(() => showToast('Link copied!'))
+      .catch(() => prompt('Copy this link:', url));
+  }
+
+  document.getElementById('share-btn').addEventListener('click', shareConfig);
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ── Calculations ──────────────────────────────────────────────────────────
+
+  function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+  function recalc() {
+    // Cloud
+    let cloudTotal = 0;
+    DEFAULT_SERVICES.forEach(svc => {
+      const s = getServiceState(svc.id);
+      if (s.enabled) cloudTotal += s.cost !== null ? s.cost : svc.cost;
+    });
+    state.customServices.forEach((cs, i) => {
+      const s = getServiceState('custom-' + i);
+      if (s.enabled) cloudTotal += s.cost !== null ? s.cost : (cs.cost || 0);
+    });
+
+    // Self
+    const hwCost  = num(state.hosting.hwCost);
+    const hwLife  = num(state.hosting.hwLife) || 5;
+    const hwMo    = hwCost / (hwLife * 12);
+
+    const watts   = num(state.hosting.elecWatts);
+    const hours   = num(state.hosting.elecHours) || (watts > 0 ? 24 : 0);
+    const rate    = num(state.hosting.elecRate)  || (watts > 0 ? 0.12 : 0);
+    const elecMo  = (watts * hours * 30 * rate) / 1000;
+
+    const runningMo = elecMo + num(state.hosting.internet) + num(state.hosting.domain) / 12 + num(state.hosting.other);
+    const selfTotal = hwMo + runningMo;
+    const savings   = cloudTotal - selfTotal;
+
+    // Break-even
+    let beText = '—', beSub = 'hardware payoff';
+    if (hwCost > 0 && savings > 0) {
+      const mo = Math.ceil(hwCost / savings);
+      beText = mo <= 1 ? '< 1 mo' : mo < 12 ? mo + ' mo' : (mo / 12).toFixed(1) + ' yrs';
+    } else if (hwCost > 0) {
+      beText = 'Never'; beSub = 'costs exceed savings';
+    }
+
+    // Months elapsed
+    const sd = state.hosting.startDate;
+    let monthsElapsed = 0;
+    if (sd) {
+      const [yr, mo] = sd.split('-').map(Number);
+      const now = new Date();
+      monthsElapsed = Math.max(0, (now.getFullYear() - yr) * 12 + (now.getMonth() + 1 - mo));
+    }
+
+    // Total saved
+    let totalSaved = null;
+    if (sd && savings > 0 && monthsElapsed > 0) totalSaved = savings * monthsElapsed;
+
+    // Update DOM
+    updateSymbols();
+
+    const elecEl = document.getElementById('elec-result');
+    if (elecMo > 0) {
+      elecEl.textContent = fmt(elecMo) + '/mo';
+      elecEl.classList.remove('empty');
+    } else {
+      elecEl.textContent = '—';
+      elecEl.classList.add('empty');
+    }
+
+    document.getElementById('r-cloud').textContent     = fmt(cloudTotal);
+    document.getElementById('r-self').textContent      = fmt(selfTotal);
+
+    const savEl = document.getElementById('r-savings');
+    savEl.textContent = fmtS(savings);
+    savEl.className   = 'stat-value ' + (savings >= 0 ? 'positive' : 'negative');
+    document.getElementById('r-yearly').textContent    = fmtS(savings * 12) + '/yr';
+    document.getElementById('r-breakeven').textContent = beText;
+    document.getElementById('r-breakeven-sub').textContent = beSub;
+
+    const totalItem = document.getElementById('r-total-item');
+    if (totalSaved !== null) {
+      totalItem.style.display = '';
+      document.getElementById('r-total').textContent = '+' + fmt(totalSaved);
+      const msElapsed = Date.now() - new Date(sd + '-01').getTime();
+      const yrs = Math.floor(msElapsed / (1000*60*60*24*365.25));
+      const mos = Math.round((msElapsed / (1000*60*60*24*365.25) - yrs) * 12);
+      let dur = yrs > 0 ? yrs + 'y' : '';
+      if (mos > 0) dur += (dur ? ' ' : '') + mos + 'mo';
+      document.getElementById('r-total-sub').textContent = dur ? 'over ' + dur : 'since you started';
+    } else {
+      totalItem.style.display = 'none';
+    }
+
+    drawChart(hwCost, cloudTotal, runningMo, monthsElapsed);
+  }
+
+  // ── Chart ─────────────────────────────────────────────────────────────────
+
+  function drawChart(hwCost, cloudMo, runningMo, monthsElapsed = 0) {
+    const section = document.getElementById('chart-section');
+    const netMo = cloudMo - runningMo;
+    if (hwCost <= 0 || netMo <= 0) { section.style.display = 'none'; return; }
+    section.style.display = '';
+
+    const beMo    = hwCost / netMo;
+    const totalMo = Math.max(Math.ceil(beMo * 1.4), monthsElapsed + Math.ceil(beMo * 0.25), 6);
+    const W=600, H=200, pl=68, pr=20, pt=16, pb=36;
+    const pw = W-pl-pr, ph = H-pt-pb;
+
+    const pts = Array.from({length: totalMo+1}, (_, m) => ({ m, v: -hwCost + netMo * m }));
+    const yMin_d = -hwCost, yMax_d = pts.at(-1).v;
+    const yPad   = (yMax_d - yMin_d) * 0.1;
+    const yMin   = yMin_d - yPad, yMax = yMax_d + yPad, yRange = yMax - yMin;
+
+    const sx = m => pl + (m / totalMo) * pw;
+    const sy = v => pt + (1 - (v - yMin) / yRange) * ph;
+    const z  = sy(0);
+    const bx = sx(beMo);
+
+    let o = '';
+
+    // Grid lines (very subtle)
+    const xSt = totalMo <= 12 ? 3 : totalMo <= 30 ? 6 : 12;
+    for (let m = 0; m <= totalMo; m += xSt) {
+      const x = sx(m).toFixed(1);
+      o += `<line x1="${x}" y1="${pt}" x2="${x}" y2="${pt+ph}" stroke="var(--border)" stroke-width="1"/>`;
+      const lbl = m === 0 ? (monthsElapsed > 0 ? 'Start' : 'Now') : m % 12 === 0 ? `Yr ${m/12}` : `${m}mo`;
+      o += `<text x="${x}" y="${H-6}" text-anchor="middle" font-size="9" fill="var(--text-dim)">${lbl}</text>`;
+    }
+
+    // Zero line
+    o += `<line x1="${pl}" y1="${z.toFixed(1)}" x2="${pl+pw}" y2="${z.toFixed(1)}" stroke="var(--border-strong)" stroke-width="1" stroke-dasharray="4,4"/>`;
+
+    // Y labels
+    [
+      { v: 0,      lbl: '0'               },
+      { v: yMin_d, lbl: `−${fmt(hwCost)}` },
+      { v: yMax_d, lbl: `+${fmt(yMax_d)}` },
+    ].forEach(({ v, lbl }) => {
+      if (v >= yMin && v <= yMax) {
+        o += `<text x="${pl-5}" y="${(sy(v)+3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-dim)">${lbl}</text>`;
+      }
+    });
+
+    // Negative area fill
+    const negPts = pts.filter(p => p.v <= 0);
+    let nd = `M${sx(0).toFixed(1)},${(pt+ph).toFixed(1)} L${sx(0).toFixed(1)},${sy(-hwCost).toFixed(1)}`;
+    negPts.forEach(p => { nd += ` L${sx(p.m).toFixed(1)},${sy(p.v).toFixed(1)}`; });
+    nd += ` L${bx.toFixed(1)},${z.toFixed(1)} L${bx.toFixed(1)},${(pt+ph).toFixed(1)} Z`;
+    o += `<path d="${nd}" fill="var(--negative-bg)" opacity="0.9"/>`;
+
+    // Positive area fill
+    const posPts = pts.filter(p => p.v >= 0);
+    let pd = `M${bx.toFixed(1)},${(pt+ph).toFixed(1)} L${bx.toFixed(1)},${z.toFixed(1)}`;
+    posPts.forEach(p => { pd += ` L${sx(p.m).toFixed(1)},${sy(p.v).toFixed(1)}`; });
+    pd += ` L${sx(totalMo).toFixed(1)},${(pt+ph).toFixed(1)} Z`;
+    o += `<path d="${pd}" fill="var(--positive-bg)" opacity="0.9"/>`;
+
+    // Main line (white/light — Fey style)
+    const ld = pts.map((p, i) => `${i===0?'M':'L'}${sx(p.m).toFixed(1)},${sy(p.v).toFixed(1)}`).join(' ');
+    o += `<path d="${ld}" fill="none" stroke="var(--text)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>`;
+
+    // Break-even marker
+    o += `<line x1="${bx.toFixed(1)}" y1="${pt}" x2="${bx.toFixed(1)}" y2="${(pt+ph).toFixed(1)}" stroke="var(--positive)" stroke-width="1" stroke-dasharray="4,3" opacity="0.7"/>`;
+    o += `<circle cx="${bx.toFixed(1)}" cy="${z.toFixed(1)}" r="4" fill="var(--positive)" stroke="var(--surface-solid)" stroke-width="1.5"/>`;
+    const beLbl = beMo < 12 ? `${Math.ceil(beMo)} mo` : `${(beMo/12).toFixed(1)} yrs`;
+    const lblX  = Math.min(bx + 7, pl + pw - 40);
+    o += `<text x="${lblX.toFixed(1)}" y="${(z-8).toFixed(1)}" font-size="10" font-weight="600" fill="var(--positive)">${beLbl}</text>`;
+
+    // Today marker
+    if (monthsElapsed > 0 && monthsElapsed <= totalMo) {
+      const tx = sx(monthsElapsed);
+      const ty = sy(-hwCost + netMo * monthsElapsed);
+      o += `<line x1="${tx.toFixed(1)}" y1="${pt}" x2="${tx.toFixed(1)}" y2="${(pt+ph).toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>`;
+      o += `<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="3.5" fill="var(--accent)" stroke="var(--surface-solid)" stroke-width="1.5"/>`;
+      const todayLblX = tx > bx - 52 ? tx - 46 : tx + 6;
+      o += `<text x="${Math.max(pl + 4, todayLblX).toFixed(1)}" y="${(ty - 8).toFixed(1)}" font-size="9" font-weight="600" fill="var(--accent)">Today</text>`;
+    }
+
+    document.getElementById('breakeven-chart').innerHTML = o;
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  renderCurrencySelector();
+  renderServices();
+  loadHostingInputs();
+  recalc();
+</script>
+
+</body>
+</html>
